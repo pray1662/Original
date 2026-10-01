@@ -73,9 +73,19 @@ jobs:
           print("Corpus files are real files, not LFS pointers.")
           PY
 
-      - name: Build Bible data
+          - name: Build Bible data
         run: |
-          python import_macula.py
+          GREEK_TSV=$(find source/macula-greek -type f -iname "*.tsv" | head -n 1)
+          HEBREW_TSV=$(find source/macula-hebrew -type f -iname "*.tsv" | head -n 1)
+
+          echo "Using Greek: $GREEK_TSV"
+          echo "Using Hebrew: $HEBREW_TSV"
+
+          mkdir -p data/nt
+          mkdir -p data/ot
+
+          python import_macula.py "$GREEK_TSV" data/nt greek
+          python import_macula.py "$HEBREW_TSV" data/ot hebrew
           
       - name: Validate generated chapters
         run: |
