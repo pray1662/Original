@@ -46,8 +46,8 @@ def main(src,out,lang):
     out=Path(out)
     count=0
     for (book,ch),verses in chapters.items():
-        d=out/lang/slug(book); d.mkdir(parents=True,exist_ok=True)
-        payload=[{'v':v,'w':verses[v]} for v in sorted(verses)]
+d=out/slug(book); d.mkdir(parents=True,exist_ok=True)
+payload=[{'v':v,'w':verses[v]} for v in sorted(verses)]
         (d/f'{ch}.json').write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
         count+=1
     print(f'Generated {count} {lang} chapters')
