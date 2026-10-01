@@ -73,7 +73,7 @@ jobs:
           print("Corpus files are real files, not LFS pointers.")
           PY
 
-          - name: Build Bible data
+              - name: Build Bible data
         run: |
           GREEK_TSV=$(find source/macula-greek -type f -iname "*.tsv" | head -n 1)
           HEBREW_TSV=$(find source/macula-hebrew -type f -iname "*.tsv" | head -n 1)
