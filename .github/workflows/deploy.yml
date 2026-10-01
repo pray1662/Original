@@ -1,0 +1,110 @@
+name: Build and deploy Original
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Original
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: Download MACULA Greek
+        run: |
+          git clone --depth 1 https://github.com/Clear-Bible/macula-greek.git source/macula-greek
+
+      - name: Download MACULA Hebrew
+        run: |
+          git clone --depth 1 https://github.com/Clear-Bible/macula-hebrew.git source/macula-hebrew
+          cd source/macula-hebrew
+          git lfs pull
+
+      - name: Find corpus files
+        run: |
+          echo "Greek TSV files:"
+          find source/macula-greek -type f -iname "*.tsv" -print
+
+          echo "Hebrew TSV files:"
+          find source/macula-hebrew -type f -iname "*.tsv" -print
+
+      - name: Reject Git LFS pointers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          files = list(Path("source").rglob("*.tsv"))
+
+          if not files:
+              raise SystemExit("No TSV files found.")
+
+          for path in files:
+              try:
+                  beginning = path.read_bytes()[:200]
+              except Exception:
+                  continue
+
+              if b"git-lfs.github.com/spec/v1" in beginning:
+                  raise SystemExit(f"LFS pointer found instead of corpus: {path}")
+
+          print("Corpus files are real files, not LFS pointers.")
+          PY
+
+      - name: Build Bible data
+        run: |
+          python scripts/import_macula.py
+
+      - name: Validate generated chapters
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          nt = list(Path("data/nt").rglob("*.json"))
+          ot = list(Path("data/ot").rglob("*.json"))
+
+          print(f"NT chapters: {len(nt)}")
+          print(f"OT chapters: {len(ot)}")
+
+          if len(nt) < 250:
+              raise SystemExit("Too few NT chapters generated.")
+
+          if len(ot) < 800:
+              raise SystemExit("Too few OT chapters generated.")
+
+          print("Bible data validation passed.")
+          PY
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
